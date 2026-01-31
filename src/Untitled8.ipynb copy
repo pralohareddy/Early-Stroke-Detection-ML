@@ -1,0 +1,181 @@
+{
+  "nbformat": 4,
+  "nbformat_minor": 0,
+  "metadata": {
+    "colab": {
+      "provenance": []
+    },
+    "kernelspec": {
+      "name": "python3",
+      "display_name": "Python 3"
+    },
+    "language_info": {
+      "name": "python"
+    }
+  },
+  "cells": [
+    {
+      "cell_type": "code",
+      "execution_count": 1,
+      "metadata": {
+        "id": "XkX3Ds4Vjaqi"
+      },
+      "outputs": [],
+      "source": [
+        "import pandas as pd\n",
+        "import numpy as np\n",
+        "from sklearn.model_selection import train_test_split\n",
+        "from sklearn.preprocessing import LabelEncoder, StandardScaler\n",
+        "from sklearn.impute import SimpleImputer\n",
+        "from sklearn.linear_model import LogisticRegression\n",
+        "from sklearn.tree import DecisionTreeClassifier\n",
+        "from sklearn.ensemble import RandomForestClassifier, VotingClassifier\n",
+        "from sklearn.metrics import accuracy_score, classification_report, confusion_matrix\n"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "df = pd.read_csv('/content/healthcare-dataset-stroke-data.csv.xls')  # Replace with actual path if needed\n",
+        "print(df.head())\n"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "cUANzD-Rjpig",
+        "outputId": "41f951ff-396a-43d0-fe49-015386db37e2"
+      },
+      "execution_count": 2,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "      id  gender   age  hypertension  heart_disease ever_married  \\\n",
+            "0   9046    Male  67.0             0              1          Yes   \n",
+            "1  51676  Female  61.0             0              0          Yes   \n",
+            "2  31112    Male  80.0             0              1          Yes   \n",
+            "3  60182  Female  49.0             0              0          Yes   \n",
+            "4   1665  Female  79.0             1              0          Yes   \n",
+            "\n",
+            "       work_type Residence_type  avg_glucose_level   bmi   smoking_status  \\\n",
+            "0        Private          Urban             228.69  36.6  formerly smoked   \n",
+            "1  Self-employed          Rural             202.21   NaN     never smoked   \n",
+            "2        Private          Rural             105.92  32.5     never smoked   \n",
+            "3        Private          Urban             171.23  34.4           smokes   \n",
+            "4  Self-employed          Rural             174.12  24.0     never smoked   \n",
+            "\n",
+            "   stroke  \n",
+            "0       1  \n",
+            "1       1  \n",
+            "2       1  \n",
+            "3       1  \n",
+            "4       1  \n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# Drop ID column\n",
+        "if 'id' in df.columns:\n",
+        "    df.drop('id', axis=1, inplace=True)\n",
+        "\n",
+        "\n",
+        "# Handle missing values in bmi\n",
+        "imputer = SimpleImputer(strategy='mean')\n",
+        "df['bmi'] = imputer.fit_transform(df[['bmi']])\n",
+        "\n",
+        "# Encode categorical columns\n",
+        "cat_cols = ['gender', 'ever_married', 'work_type', 'Residence_type', 'smoking_status']\n",
+        "df[cat_cols] = df[cat_cols].apply(LabelEncoder().fit_transform)\n",
+        "\n",
+        "# Features and target\n",
+        "X = df.drop('stroke', axis=1)\n",
+        "y = df['stroke']\n",
+        "\n",
+        "# Normalize the features\n",
+        "scaler = StandardScaler()\n",
+        "X_scaled = scaler.fit_transform(X)\n",
+        "\n",
+        "# Train-test split\n",
+        "X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42, stratify=y)\n"
+      ],
+      "metadata": {
+        "id": "2M87PBM-jxHu"
+      },
+      "execution_count": 8,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# Step 4: Create Voting Classifier\n",
+        "\n",
+        "# Individual models\n",
+        "log_clf = LogisticRegression()\n",
+        "dt_clf = DecisionTreeClassifier(random_state=42)\n",
+        "rf_clf = RandomForestClassifier(n_estimators=100, random_state=42)\n",
+        "\n",
+        "# Voting Classifier - hard voting\n",
+        "voting_clf = VotingClassifier(estimators=[\n",
+        "    ('lr', log_clf),\n",
+        "    ('dt', dt_clf),\n",
+        "    ('rf', rf_clf)\n",
+        "], voting='hard')\n",
+        "\n",
+        "# Train\n",
+        "voting_clf.fit(X_train, y_train)\n",
+        "\n",
+        "# Predict\n",
+        "y_pred = voting_clf.predict(X_test)\n"
+      ],
+      "metadata": {
+        "id": "PdlyqNsnkooi"
+      },
+      "execution_count": 11,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# Step 5: Evaluate\n",
+        "print(\"Accuracy:\", accuracy_score(y_test, y_pred))\n",
+        "print(\"Confusion Matrix:\\n\", confusion_matrix(y_test, y_pred))\n",
+        "print(\"Classification Report:\\n\", classification_report(y_test, y_pred))\n"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "otPUv6bXoiFB",
+        "outputId": "7da5c150-52e6-414d-9b06-247a99a88d7b"
+      },
+      "execution_count": 12,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Accuracy: 0.9500978473581213\n",
+            "Confusion Matrix:\n",
+            " [[971   1]\n",
+            " [ 50   0]]\n",
+            "Classification Report:\n",
+            "               precision    recall  f1-score   support\n",
+            "\n",
+            "           0       0.95      1.00      0.97       972\n",
+            "           1       0.00      0.00      0.00        50\n",
+            "\n",
+            "    accuracy                           0.95      1022\n",
+            "   macro avg       0.48      0.50      0.49      1022\n",
+            "weighted avg       0.90      0.95      0.93      1022\n",
+            "\n"
+          ]
+        }
+      ]
+    }
+  ]
+}
